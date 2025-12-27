@@ -28,10 +28,10 @@
 // (Declaring all functions up top so Main can see them)
 bool decrypt_file(std::string& input, std::string& output, std::string& password);
 bool encrypt_file(std::string& input, std::string& output, std::string& password);
-bool write_file(const std::string data_to_write);
+bool write_file(const std::string data_to_write, const std::size_t size);
 bool write_file(std::string output, int max_line); // Overloaded function
 void user_password_input();
-bool load_file_contents(const std::string& filename, std::string& input, std::string& output);
+bool load_file_contents(const std::string& filename, std::string& input, std::string& output, std::size_t &size);
 std::string getDesktopPath();
 Eigen::MatrixXd matrix_create(std::string pass);
 
@@ -62,17 +62,26 @@ int main(int argc, char* argv[])
     // 2. Main Logic Variables
     std::string input, output, password, filename;
     int number;
+    std::size_t size{ 0 };
 
     // 3. User Interaction
     if (argc >= 2) {
         std::cout << "Please upload your input file path: ";
         std::cin >> filename;
 
-        load_file_contents(filename, input, output);
+        load_file_contents(filename, input, output, size);
     }
     else if (argc < 2) {
         std::cout << "Please upload your input file path: ";
         std::getline(std::cin, filename);
+    }
+
+	// Getrid of leading/trailing whitespace and quotes
+    while (!filename.empty() && isspace(filename.front())) {
+        filename.erase(0, 1);
+    }
+    while (!filename.empty() && isspace(filename.back())) {
+        filename.pop_back();
     }
     if (!filename.empty() && filename.front() == '"') {
 		filename.erase(0, 1);
@@ -81,7 +90,7 @@ int main(int argc, char* argv[])
 		filename.pop_back();
     }
 
-    if (!load_file_contents(filename, input, output)) {
+    if (!load_file_contents(filename, input, output, size)) {
         std::cout << "File import failed, exiting...\n";
     }
 
@@ -124,9 +133,8 @@ bool encrypt_file(std::string& input, std::string& output, std::string& password
 }
 
 // Write file (Version 1: takes simple string)
-bool write_file(const std::string data_to_write) {
-    std::string m_after_enc;
-    std::ofstream outFile("blank_file.txt");
+bool write_file(const std::string data_to_write, const std::size_t total_size) {
+    std::ofstream outFile("encrypted.txt", std::ios::binary);
     if (!outFile.is_open()) {
         std::cerr << "File failed to open...Please try again" << std::endl;
         return 1;
@@ -134,7 +142,7 @@ bool write_file(const std::string data_to_write) {
     else {
         std::cout << "Processing file, please wait for a moment..." << std::endl;
         // Logic preserved: m_after_enc is empty here
-        outFile << m_after_enc;
+        outFile.write(&data_to_write[0], total_size);
     }
     return 0;
 }
@@ -169,7 +177,7 @@ void user_password_input() {
 }
 
 // Function that ask the user for file path and verifies the contents
-bool load_file_contents(const std::string& filename, std::string& input, std::string& output) {
+bool load_file_contents(const std::string& filename, std::string& input, std::string& output, std::size_t &size) {
     // Setting the both pointers to the end and the beggining to get the file size
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     if (!file) {
@@ -180,11 +188,13 @@ bool load_file_contents(const std::string& filename, std::string& input, std::st
         std::streamsize total_size = file.tellg();
         file.seekg(0, std::ios::beg);
 
+        size = total_size;
         if (total_size == 0) {
             std::cout << "File is empty." << std::endl;
             return true;
         }
-        std::ifstream file_read();
+        input.resize(total_size);
+        file.read(&input[0], total_size);
         return true;
     }
 }
