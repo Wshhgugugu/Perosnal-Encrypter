@@ -26,8 +26,8 @@
 
 // --- Function Prototypes ---
 // (Declaring all functions up top so Main can see them)
-bool decrypt_file(std::string& input, std::string& output, std::string& password);
-bool encrypt_file(std::string& input, std::string& output, std::string& password);
+bool decrypt_file(std::string& input, std::string& output, Eigen::MatrixXd mat1_inv);
+bool encrypt_file(std::string& input, std::string& output, Eigen::MatrixXd mat1);
 bool write_file(const std::string data_to_write, const std::size_t size, const std::string filename);
 void user_password_input(std::string &password);
 bool load_file_contents(const std::string& filename, std::string& input, std::string& output, std::size_t &size);
@@ -96,7 +96,6 @@ int main(int argc, char* argv[])
     long lucky_num;
 	std::cout << "Please type in a one digit lucky number:" << std::endl;
     std::cin >> lucky_num;
-	Eigen::MatrixXd mat1 = matrix_create(password, lucky_num);
 
    /* write_file(input, size);
     std::cout << "Test file 'encrypted.txt' created. Please rename it to original extension and check if it works!" << std::endl;*/
@@ -125,18 +124,22 @@ int main(int argc, char* argv[])
 
     if (number == 1) {
         user_password_input(password);
-        encrypt_file(input, output, password);
+		// Generate matrix based on password and lucky number
+        Eigen::MatrixXd mat1 = matrix_create(password, lucky_num);
+        encrypt_file(input, output, mat1);
     }
     if (number == 2) {
         user_password_input(password);
-        decrypt_file(input, output, password);
+        Eigen::MatrixXd mat1 = matrix_create(password, lucky_num);
+        Eigen::MatrixXd mat1_inv = mat1.inverse();
+        decrypt_file(input, output, mat1_inv);
     }
 
     if (output.empty()) {
         std::cout << "No input provided, exiting...\n";
         return 0;
     }
-    else if (write_file(output, size, new_name)) {
+    else if (write_file(output, output.size(), new_name)) {
         std::cout << "Saved successfully!" << std::endl << "Filename: " << filename;
     }
     else
@@ -149,12 +152,82 @@ int main(int argc, char* argv[])
 // ==========================================
 //          Function Definitions
 // ==========================================
-bool decrypt_file(std::string& input, std::string& output, std::string& password) {
-    return 0;
+//bool decrypt_file(std::string& input, std::string& output, Eigen::MatrixXd mat1_inv) {
+//    return 0;
+//}
+//
+//bool encrypt_file(std::string& input, std::string& output, Eigen::MatrixXd mat1){
+//    return 0;
+//}
+bool encrypt_file(std::string& input, std::string& output, Eigen::MatrixXd mat1) {
+    int block_size = mat1.rows();
+    int original_size = input.size();
+
+    int padding = 0;
+    if (original_size % block_size != 0) {
+        padding = block_size - (original_size % block_size);
+    }
+
+    std::string padded_input = input;
+    padded_input.resize(original_size + padding, 0);
+
+    int num_blocks = padded_input.size() / block_size;
+
+    output.resize(num_blocks * block_size * sizeof(double));
+
+    double* out_ptr = reinterpret_cast<double*>(&output[0]);
+
+    for (int i = 0; i < num_blocks; i++) {
+        Eigen::VectorXd vec(block_size);
+        for (int j = 0; j < block_size; j++) {
+            vec(j) = static_cast<double>((unsigned char)padded_input[i * block_size + j]);
+        }
+
+        Eigen::VectorXd encrypted_vec = mat1 * vec;
+
+        for (int j = 0; j < block_size; j++) {
+            *out_ptr = encrypted_vec(j);
+            out_ptr++;
+        }
+    }
+    return true;
 }
 
-bool encrypt_file(std::string& input, std::string& output, std::string& password) {
-    return 0;
+bool decrypt_file(std::string& input, std::string& output, Eigen::MatrixXd mat1_inv) {
+    int block_size = mat1_inv.rows();
+
+    if (input.size() % sizeof(double) != 0) {
+        return false;
+    }
+
+    int total_doubles = input.size() / sizeof(double);
+    if (total_doubles % block_size != 0) {
+        return false;
+    }
+
+    int num_blocks = total_doubles / block_size;
+
+    output.resize(total_doubles);
+
+    const double* in_ptr = reinterpret_cast<const double*>(&input[0]);
+
+    int current_out_idx = 0;
+
+    for (int i = 0; i < num_blocks; i++) {
+        Eigen::VectorXd vec(block_size);
+        for (int j = 0; j < block_size; j++) {
+            vec(j) = *in_ptr;
+            in_ptr++;
+        }
+
+        Eigen::VectorXd decrypted_vec = mat1_inv * vec;
+
+        for (int j = 0; j < block_size; j++) {
+            unsigned char c = static_cast<unsigned char>(std::round(decrypted_vec(j)));
+            output[current_out_idx++] = c;
+        }
+    }
+    return true;
 }
 
 // Write file (Version 1: takes simple string)
@@ -228,16 +301,18 @@ std::string getDesktopPath() {
 Eigen::MatrixXd matrix_create(std::string pass, long lucky_num) {
     // Logic preserved: row_size is initialized to 0
     long row_size{ lucky_num };
-    Eigen::MatrixXd mat1(row_size, row_size);
+    Eigen::MatrixXd mat1 = Eigen::MatrixXd::Zero(row_size, row_size);
     std::hash<std::string> str_hash;
 	std::size_t seed = str_hash(pass);
     std::mt19937 rand_num(seed);
+    std::uniform_real_distribution<double> dist(-99.9, 66.6);
 
     // Add identity matrix to ensure it invertible
     for (int i = 0; i < row_size; i++) {
         for (int k = 0; k < row_size; k++) {
+            mat1(i, k) = dist(rand_num);
             if (i == k) {
-                mat1(i, k) += 1;
+                mat1(i, k) += 20.06;
             }
         }
     }
