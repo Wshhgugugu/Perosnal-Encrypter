@@ -1,0 +1,15 @@
+﻿  Encryption 1.cpp
+E:\Code\Encrypter\Encryption 1\Encryption 1.cpp(155,20): warning C4244: 'initializing': conversion from 'Eigen::Index' to 'int', possible loss of data
+E:\Code\Encrypter\Encryption 1\Encryption 1.cpp(156,23): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+E:\Code\Encrypter\Encryption 1\Encryption 1.cpp(166,20): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+E:\Code\Encrypter\Encryption 1\Encryption 1.cpp(189,20): warning C4244: 'initializing': conversion from 'Eigen::Index' to 'int', possible loss of data
+E:\Code\Encrypter\Encryption 1\Encryption 1.cpp(195,23): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+E:\Code\Encrypter\Encryption 1\Encryption 1.cpp(299,27): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
+  Generating code
+  15 of 1909 functions ( 0.8%) were compiled, the rest were copied from previous compilation.
+    2 functions were new in current compilation
+    59 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  Encryption 1.vcxproj -> E:\Code\Encrypter\Encryption 1\x64\Release\Encryption 1.exe
+  'pwsh.exe' is not recognized as an internal or external command,
+  operable program or batch file.
