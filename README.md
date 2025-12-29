@@ -26,7 +26,6 @@ The encryption process is designed around the following steps:
 
 ## 📂 Project Structure
 
-```text
 Perosnal-Encrypter/
 ├── Encryption 1/
 │   ├── Encryption 1.cpp    # Main implementation logic
@@ -35,7 +34,10 @@ Perosnal-Encrypter/
 ├── main.cpp                # Alternate entry point (Prototype)
 └── README.md               # Documentation
 
-## Dependencies
+---
 
-This project uses the [Eigen](https://gitlab.com/libeigen/eigen) C++ library (version 5.0.0) for linear algebra.
+## 🛠 Dependencies
+
+This project uses the [Eigen](https://gitlab.com/libeigen/eigen) C++ library (version 5.0.0) for linear algebra.  
 Make sure to install Eigen 5.0.0 and add it to your compiler's include path.
+
