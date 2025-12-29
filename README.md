@@ -34,3 +34,8 @@ Perosnal-Encrypter/
 │   └── ...                 # Project build files
 ├── main.cpp                # Alternate entry point (Prototype)
 └── README.md               # Documentation
+
+## Dependencies
+
+This project uses the [Eigen](https://gitlab.com/libeigen/eigen) C++ library (version 5.0.0) for linear algebra.
+Make sure to install Eigen 5.0.0 and add it to your compiler's include path.
