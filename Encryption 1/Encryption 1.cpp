@@ -10,6 +10,7 @@
 #include <thread>
 #include <chrono>
 #include <iomanip>
+#include <limits>
 
 // --- Third-party Libraries ---
 #include <Eigen/Dense>
@@ -63,17 +64,16 @@ int main(int argc, char* argv[])
     int number;
     std::size_t size{ 0 };
 
-    // 3. User Interaction
-    if (argc >= 2) {
-        std::cout << "Please upload your input file path: ";
-        std::cin >> filename;
+	// Ask the user for encrypt or decrypt
+    std::cout << "Please select an option:\n";
+    std::cout << "1. Encrypt a file\n";
+    std::cout << "2. Decrypt a file\n";
+    std::cin >> number;
+	std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 
-        load_file_contents(filename, input, output, size);
-    }
-    else if (argc < 2) {
-        std::cout << "Please upload your input file path: ";
-        std::getline(std::cin, filename);
-    }
+    // 3. User Interaction
+    std::cout << "Please upload your input file path: ";
+    std::getline(std::cin, filename);
 
 	// Getrid of leading/trailing whitespace and quotes
     while (!filename.empty() && isspace(filename.front())) {
@@ -96,14 +96,6 @@ int main(int argc, char* argv[])
     long lucky_num;
 	std::cout << "Please type in a one digit lucky number:" << std::endl;
     std::cin >> lucky_num;
-
-   /* write_file(input, size);
-    std::cout << "Test file 'encrypted.txt' created. Please rename it to original extension and check if it works!" << std::endl;*/
-
-    std::cout << "Please select an option:\n";
-    std::cout << "1. Encrypt a file\n";
-    std::cout << "2. Decrypt a file\n";
-    std::cin >> number;
 
     // Create output file name
     std::string new_name{};
