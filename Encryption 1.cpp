@@ -2,9 +2,29 @@
 // Encryptor.h
 // ==========================================
 #pragma once
+#include <iostream>
+#include <fstream>
 #include <string>
+#include <vector>
+#include <sstream>
 #include <random>
+#include <thread>
+#include <chrono>
+#include <iomanip>
+#include <limits>
+
+// --- Third-party Libraries ---
 #include <Eigen/Dense>
+#include <zlib.h>
+
+// --- Platform Specific Includes ---
+#if defined(_WIN32)
+#include <windows.h>
+#include <shlobj.h>    // SHGetFolderPath
+#elif defined(__linux__) || defined(__APPLE__)
+#include <cstdlib>     // getenv
+#include <unistd.h>
+#endif
 
 class Encryptor {
 private:
