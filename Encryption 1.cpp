@@ -6,26 +6,24 @@
 #include <random>
 #include <Eigen/Dense>
 
-// Matrix-based encryption class
 class Encryptor {
 private:
-    Eigen::MatrixXd m_key_matrix;
-    Eigen::MatrixXd m_key_matrix_inv;
-    int m_block_size;
-    bool m_key_initialized;
+    Eigen::MatrixXd mat1;
+    Eigen::MatrixXd mat1_inv;
+    int block_size;
+    bool initialized;
 
-    Eigen::MatrixXd generate_key_matrix(const std::string& password, int dimension);
+    Eigen::MatrixXd matrix_create(const std::string& pass, long lucky_num);
 
 public:
     Encryptor();
-    Encryptor(const std::string& password, int lucky_num);
+    Encryptor(const std::string& pass, long lucky_num);
 
-    bool initialize_key(const std::string& password, int lucky_num);
-    bool encrypt(const std::string& plaintext, std::string& ciphertext);
-    bool decrypt(const std::string& ciphertext, std::string& plaintext);
+    bool init(const std::string& pass, long lucky_num);
+    bool encrypt_file(const std::string& input, std::string& output);
+    bool decrypt_file(const std::string& input, std::string& output);
 
-    int get_block_size() const { return m_block_size; }
-    bool is_key_initialized() const { return m_key_initialized; }
+    bool is_initialized() const { return initialized; }
 };
 
 // ==========================================
@@ -34,87 +32,87 @@ public:
 #include "Encryptor.h"
 #include <cmath>
 
-Encryptor::Encryptor() : m_block_size(0), m_key_initialized(false) {}
+Encryptor::Encryptor() : block_size(0), initialized(false) {}
 
-Encryptor::Encryptor(const std::string& password, int lucky_num) 
-    : m_block_size(0), m_key_initialized(false) {
-    initialize_key(password, lucky_num);
+Encryptor::Encryptor(const std::string& pass, long lucky_num) 
+    : block_size(0), initialized(false) {
+    init(pass, lucky_num);
 }
 
-// Generate deterministic matrix from password hash
-Eigen::MatrixXd Encryptor::generate_key_matrix(const std::string& password, int dimension) {
-    Eigen::MatrixXd mat = Eigen::MatrixXd::Zero(dimension, dimension);
-    
+Eigen::MatrixXd Encryptor::matrix_create(const std::string& pass, long lucky_num) {
+    long row_size = lucky_num;
+    Eigen::MatrixXd mat = Eigen::MatrixXd::Zero(row_size, row_size);
+
     std::hash<std::string> str_hash;
-    std::mt19937 rand_num(str_hash(password));
+    std::size_t seed = str_hash(pass);
+    std::mt19937 rand_num(seed);
     std::uniform_real_distribution<double> dist(-99.9, 66.6);
 
-    for (int i = 0; i < dimension; i++) {
-        for (int k = 0; k < dimension; k++) {
+    for (int i = 0; i < row_size; i++) {
+        for (int k = 0; k < row_size; k++) {
             mat(i, k) = dist(rand_num);
-            if (i == k) mat(i, k) += 20.06;  // Ensure invertibility
+            if (i == k) mat(i, k) += 20.06;
         }
     }
     return mat;
 }
 
-bool Encryptor::initialize_key(const std::string& password, int lucky_num) {
+bool Encryptor::init(const std::string& pass, long lucky_num) {
     if (lucky_num <= 0 || lucky_num > 9) return false;
     
-    m_block_size = lucky_num;
-    m_key_matrix = generate_key_matrix(password, lucky_num);
-    m_key_matrix_inv = m_key_matrix.inverse();
-    m_key_initialized = true;
+    block_size = lucky_num;
+    mat1 = matrix_create(pass, lucky_num);
+    mat1_inv = mat1.inverse();
+    initialized = true;
     return true;
 }
 
-bool Encryptor::encrypt(const std::string& plaintext, std::string& ciphertext) {
-    if (!m_key_initialized) return false;
+bool Encryptor::encrypt_file(const std::string& input, std::string& output) {
+    if (!initialized) return false;
 
-    // Pad input to block size
-    int padding = (plaintext.size() % m_block_size != 0) 
-                  ? m_block_size - (plaintext.size() % m_block_size) : 0;
-    std::string padded = plaintext;
-    padded.resize(plaintext.size() + padding, 0);
+    int original_size = input.size();
+    int padding = (original_size % block_size != 0) 
+                  ? block_size - (original_size % block_size) : 0;
 
-    int num_blocks = padded.size() / m_block_size;
-    ciphertext.resize(num_blocks * m_block_size * sizeof(double));
-    double* out_ptr = reinterpret_cast<double*>(&ciphertext[0]);
+    std::string padded_input = input;
+    padded_input.resize(original_size + padding, 0);
 
-    // Encrypt each block: vector * matrix
+    int num_blocks = padded_input.size() / block_size;
+    output.resize(num_blocks * block_size * sizeof(double));
+    double* out_ptr = reinterpret_cast<double*>(&output[0]);
+
     for (int i = 0; i < num_blocks; i++) {
-        Eigen::VectorXd vec(m_block_size);
-        for (int j = 0; j < m_block_size; j++)
-            vec(j) = (unsigned char)padded[i * m_block_size + j];
-        
-        Eigen::VectorXd enc = m_key_matrix * vec;
-        for (int j = 0; j < m_block_size; j++)
-            *out_ptr++ = enc(j);
+        Eigen::VectorXd vec(block_size);
+        for (int j = 0; j < block_size; j++)
+            vec(j) = static_cast<double>((unsigned char)padded_input[i * block_size + j]);
+
+        Eigen::VectorXd encrypted_vec = mat1 * vec;
+        for (int j = 0; j < block_size; j++)
+            *out_ptr++ = encrypted_vec(j);
     }
     return true;
 }
 
-bool Encryptor::decrypt(const std::string& ciphertext, std::string& plaintext) {
-    if (!m_key_initialized) return false;
-    if (ciphertext.size() % sizeof(double) != 0) return false;
+bool Encryptor::decrypt_file(const std::string& input, std::string& output) {
+    if (!initialized) return false;
+    if (input.size() % sizeof(double) != 0) return false;
 
-    int total_doubles = ciphertext.size() / sizeof(double);
-    if (total_doubles % m_block_size != 0) return false;
+    int total_doubles = input.size() / sizeof(double);
+    if (total_doubles % block_size != 0) return false;
 
-    int num_blocks = total_doubles / m_block_size;
-    plaintext.resize(total_doubles);
-    const double* in_ptr = reinterpret_cast<const double*>(&ciphertext[0]);
-    int idx = 0;
+    int num_blocks = total_doubles / block_size;
+    output.resize(total_doubles);
+    const double* in_ptr = reinterpret_cast<const double*>(&input[0]);
+    int current_out_idx = 0;
 
-    // Decrypt each block: vector * inverse_matrix
     for (int i = 0; i < num_blocks; i++) {
-        Eigen::VectorXd vec(m_block_size);
-        for (int j = 0; j < m_block_size; j++)
+        Eigen::VectorXd vec(block_size);
+        for (int j = 0; j < block_size; j++)
             vec(j) = *in_ptr++;
 
-        Eigen::VectorXd dec = m_key_matrix_inv * vec;
-        for (int j = 0; j < m_block_size; j++)
-            plaintext[idx++] = (unsigned char)std::round(dec(j));
+        Eigen::VectorXd decrypted_vec = mat1_inv * vec;
+        for (int j = 0; j < block_size; j++)
+            output[current_out_idx++] = static_cast<unsigned char>(std::round(decrypted_vec(j)));
     }
     return true;
 }
@@ -125,13 +123,12 @@ bool Encryptor::decrypt(const std::string& ciphertext, std::string& plaintext) {
 #pragma once
 #include <string>
 
-// Static utility class for file operations
 class FileHandler {
 public:
-    static bool read_file(const std::string& filename, std::string& content);
-    static bool write_file(const std::string& filename, const std::string& content);
-    static std::string get_desktop_path();
-    static std::string strip_path(std::string path);
+    static bool load_file_contents(const std::string& filename, std::string& input, std::size_t& size);
+    static bool write_file(const std::string& data_to_write, std::size_t total_size, const std::string& new_name);
+    static std::string getDesktopPath();
+    static std::string strip_path(std::string filename);
 };
 
 // ==========================================
@@ -148,25 +145,39 @@ public:
     #include <cstdlib>
 #endif
 
-bool FileHandler::read_file(const std::string& filename, std::string& content) {
+bool FileHandler::load_file_contents(const std::string& filename, std::string& input, std::size_t& size) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
-    if (!file) return false;
+    if (!file) {
+        std::cerr << "Error: Cannot open file " << filename << std::endl;
+        return false;
+    }
 
-    std::streamsize size = file.tellg();
+    std::streamsize total_size = file.tellg();
     file.seekg(0, std::ios::beg);
-    content.resize(size);
-    file.read(&content[0], size);
+    size = total_size;
+
+    if (total_size == 0) {
+        std::cout << "File is empty." << std::endl;
+        return true;
+    }
+
+    input.resize(total_size);
+    file.read(&input[0], total_size);
     return true;
 }
 
-bool FileHandler::write_file(const std::string& filename, const std::string& content) {
-    std::ofstream file(filename, std::ios::binary);
-    if (!file) return false;
-    file.write(content.data(), content.size());
+bool FileHandler::write_file(const std::string& data_to_write, std::size_t total_size, const std::string& new_name) {
+    std::ofstream outFile(new_name, std::ios::binary);
+    if (!outFile.is_open()) {
+        std::cerr << "File failed to open...Please try again" << std::endl;
+        return false;
+    }
+    std::cout << "Processing file, please wait for a moment..." << std::endl;
+    outFile.write(&data_to_write[0], total_size);
     return true;
 }
 
-std::string FileHandler::get_desktop_path() {
+std::string FileHandler::getDesktopPath() {
 #if defined(_WIN32)
     char path[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_DESKTOP, NULL, 0, path)))
@@ -178,12 +189,12 @@ std::string FileHandler::get_desktop_path() {
 #endif
 }
 
-std::string FileHandler::strip_path(std::string path) {
-    while (!path.empty() && isspace(path.front())) path.erase(0, 1);
-    while (!path.empty() && isspace(path.back())) path.pop_back();
-    if (!path.empty() && path.front() == '"') path.erase(0, 1);
-    if (!path.empty() && path.back() == '"') path.pop_back();
-    return path;
+std::string FileHandler::strip_path(std::string filename) {
+    while (!filename.empty() && isspace(filename.front())) filename.erase(0, 1);
+    while (!filename.empty() && isspace(filename.back())) filename.pop_back();
+    if (!filename.empty() && filename.front() == '"') filename.erase(0, 1);
+    if (!filename.empty() && filename.back() == '"') filename.pop_back();
+    return filename;
 }
 
 // ==========================================
@@ -195,46 +206,63 @@ std::string FileHandler::strip_path(std::string path) {
 #include "FileHandler.h"
 
 int main() {
-    std::cout << "1. Encrypt\n2. Decrypt\n>> ";
-    int choice;
-    std::cin >> choice;
+    std::string input, output, password, filename;
+    int number;
+    std::size_t size{0};
+
+    std::cout << "Please select an option:\n";
+    std::cout << "1. Encrypt a file\n";
+    std::cout << "2. Decrypt a file\n";
+    std::cin >> number;
     std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 
-    std::cout << "File path: ";
-    std::string filename;
+    std::cout << "Please upload your input file: ";
     std::getline(std::cin, filename);
     filename = FileHandler::strip_path(filename);
 
-    std::string input;
-    if (!FileHandler::read_file(filename, input)) {
-        std::cout << "Failed to read file\n";
+    if (!FileHandler::load_file_contents(filename, input, size)) {
+        std::cout << "File import failed, exiting...\n";
         return 1;
     }
 
-    int lucky_num;
-    std::string password;
-    std::cout << "Lucky number (1-9): ";
+    long lucky_num;
+    std::cout << "Please type in a one digit lucky number:" << std::endl;
     std::cin >> lucky_num;
-    std::cout << "Password: ";
+
+    std::cout << "Please type in a password:" << std::endl;
     std::cin >> password;
 
-    Encryptor enc(password, lucky_num);
-    std::string output, output_name;
-
-    if (choice == 1) {
-        output_name = filename + ".enc";
-        enc.encrypt(input, output);
-    } else {
-        if (filename.substr(filename.size() - 4) != ".enc") {
-            std::cout << "Not an .enc file\n";
+    // Create output file name
+    std::string new_name;
+    if (number == 1) {
+        new_name = filename + ".enc";
+    } else if (number == 2) {
+        if (filename.size() <= 4 || filename.substr(filename.size() - 4) != ".enc") {
+            std::cout << "Not an encrypted file, exiting...\n";
             return 1;
         }
-        output_name = filename.substr(0, filename.size() - 4);
-        enc.decrypt(input, output);
+        new_name = filename.substr(0, filename.size() - 4);
     }
 
-    if (FileHandler::write_file(output_name, output))
-        std::cout << "Saved: " << output_name << "\n";
-    
+    std::cout << "Output file name: " << new_name << std::endl;
+
+    // Create encryptor and process
+    Encryptor encryptor(password, lucky_num);
+
+    if (number == 1)
+        encryptor.encrypt_file(input, output);
+    else if (number == 2)
+        encryptor.decrypt_file(input, output);
+
+    if (output.empty()) {
+        std::cout << "No input provided, exiting...\n";
+        return 0;
+    }
+
+    if (FileHandler::write_file(output, output.size(), new_name))
+        std::cout << "Saved successfully!" << std::endl << "Filename: " << new_name;
+    else
+        std::cout << "File save failed, exiting...\n";
+
     return 0;
 }
